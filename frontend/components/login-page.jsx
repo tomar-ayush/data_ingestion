@@ -58,6 +58,8 @@ export default function LoginPage() {
       const payload = isLogin
         ? { username: formData.username, password: formData.password }
         : { username: formData.username, password: formData.password, email: formData.email };
+
+        console.log("the payload is: " + JSON.stringify(payload));
       
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -95,7 +97,7 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (error) {
       toast({
-        title: "Error",
+        title: "Authentication failed",
         description: error.message || "Authentication failed",
         variant: "destructive",
       });
