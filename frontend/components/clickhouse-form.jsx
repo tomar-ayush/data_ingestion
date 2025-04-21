@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 
-export default function ClickHouseForm({ onConnect, onPreview, isConnected }) {
+export default function ClickHouseForm({ onConnect, onPreview, isConnected, onInputChange }) {
   const [config, setConfig] = useState({
     host: "",
     port: "8443",
@@ -18,6 +18,7 @@ export default function ClickHouseForm({ onConnect, onPreview, isConnected }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target
+    onInputChange(e);
     setConfig((prev) => ({ ...prev, [name]: value }))
   }
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
@@ -8,6 +8,7 @@ import ClickHouseForm from "./clickhouse-form"
 import FlatfileForm from "./flatfile-form"
 import PreviewModal from "./preview-modal"
 import axios from "axios"
+import Papa from "papaparse";
 
 export default function DataTransferForm() {
   const [sourceType, setSourceType] = useState("")
@@ -62,9 +63,6 @@ export default function DataTransferForm() {
       // For demo purposes, we'll simulate a successful connection
       console.log("Connecting to ClickHouse with config:", config)
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
       setClickHouseConfig({
         ...config,
         columns: [],
@@ -88,6 +86,7 @@ export default function DataTransferForm() {
   }
 
   const handleClickHousePreview = async () => {
+    console.log("clickhouseconfig: ",clickHouseConfig)
     try {
       // Simulate fetching preview data
       console.log("Fetching preview data from ClickHouse")
@@ -99,7 +98,7 @@ export default function DataTransferForm() {
           port: clickHouseConfig.port,
           database: clickHouseConfig.database,
           user: clickHouseConfig.user,
-          jwtToken,
+          jwtToken: clickHouseConfig.jwtToken,
           table: clickHouseConfig.table,
         },
         headers,
@@ -129,67 +128,67 @@ export default function DataTransferForm() {
 
   const handleFlatfilePreview = async (config) => {
     try {
-      // Log the file path for debugging
-      console.log("Fetching preview data from Flatfile", config)
+      console.log("Fetching preview data from Flatfile", config);
 
-      // Get file extension to determine delimiter
-      const fileExtension = config.filePath.split(".").pop().toLowerCase()
-      let delimiter = config.delimiter || ","
+      const fileInput = document.querySelector('input[type="file"]');
+
+      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        throw new Error("No file selected or file input is inaccessible");
+      }
+
+      const file = fileInput.files[0];
+
+      if (!file) {
+        throw new Error("The selected file could not be accessed. Please check the file path and permissions.");
+      }
+
+      const fileExtension = config.filePath.split(".").pop().toLowerCase();
+      let delimiter = config.delimiter || ",";
 
       if (fileExtension === "tsv") {
-        delimiter = "\t"
+        delimiter = "\t";
       } else if (fileExtension === "csv") {
-        delimiter = ","
+        delimiter = ",";
       }
 
       setFlatFileConfig({
         ...config,
         delimiter,
-      })
+      });
 
-      // In a real application, we would send this to the server
-      // For client-side parsing, we need the actual File object
-      const fileInput = document.querySelector('input[type="file"]')
-      
-      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-        throw new Error("No file selected")
-      }
-
-      const file = fileInput.files[0]
-      
-      // Parse the CSV/TSV file using PapaParse
       Papa.parse(file, {
         delimiter: delimiter,
         header: true,
-        preview: 10, // Parse only first 10 rows for preview
+        skipEmptyLines: true,
         complete: (results) => {
           if (results.errors && results.errors.length > 0) {
-            throw new Error(`Parsing error: ${results.errors[0].message}`)
+            console.warn("Parsing errors:", results.errors);
           }
 
-          // Transform the parsed data into the expected format
-          const columns = results.meta.fields || []
-          const rows = results.data || []
+          const validRows = results.data.filter((row) => Object.keys(row).length === results.meta.fields.length);
+
+          const columns = results.meta.fields || [];
+          const rows = validRows;
 
           const previewData = {
             columns,
-            rows: rows.slice(0, 3) // Take only first 3 rows for preview
-          }
+            rows,
+          };
 
-          setPreviewData(previewData)
-          setPreviewSource("flatfile")
-          setShowPreviewModal(true)
+          setPreviewData(previewData);
+          setPreviewSource("flatfile");
+          setShowPreviewModal(true);
         },
         error: (error) => {
-          throw new Error(`Failed to parse file: ${error.message}`)
-        }
-      })
+          throw new Error(`Failed to parse file: ${error.message}`);
+        },
+      });
     } catch (error) {
       toast({
         title: "Preview Failed",
         description: error.message || "Failed to preview Flatfile data",
         variant: "destructive",
-      })
+      });
     }
   }
 
@@ -216,39 +215,63 @@ export default function DataTransferForm() {
         sourceType === "CLICKHOUSE" &&
         (!clickHouseConfig.host || !clickHouseConfig.table || clickHouseConfig.columns.length === 0)
       ) {
-        throw new Error("ClickHouse configuration is incomplete")
+        throw new Error("ClickHouse configuration is incomplete");
       }
 
       if (sourceType === "FLATFILE" && (!flatFileConfig.filePath || flatFileConfig.columns.length === 0)) {
-        throw new Error("Flatfile configuration is incomplete")
+        throw new Error("Flatfile configuration is incomplete");
       }
+
+      // Ensure columns are the same for both configurations
+      const unifiedColumns = clickHouseConfig.columns.length > 0 ? clickHouseConfig.columns : flatFileConfig.columns;
 
       // Prepare payload
       const payload = {
         sourceType,
         targetType,
-        clickHouseConfig:
-          sourceType === "CLICKHOUSE" ? clickHouseConfig : targetType === "CLICKHOUSE" ? clickHouseConfig : null,
-        flatFileConfig: sourceType === "FLATFILE" ? flatFileConfig : targetType === "FLATFILE" ? flatFileConfig : null,
+        clickHouseConfig: {
+          ...clickHouseConfig,
+          columns: unifiedColumns,
+        },
+        flatFileConfig: {
+          ...flatFileConfig,
+          columns: unifiedColumns,
+        },
+      };
+
+      console.log("Ingesting data with payload:", JSON.stringify(payload));
+
+      // Get bearer token from localStorage
+      const token = JSON.parse(localStorage.getItem("user"));
+      const headers = token ? { Authorization: `Bearer ${token.token}` } : {};
+
+      // Make API call
+      const response = await axios.post("http://localhost:8080/api/ingest", payload, { headers });
+
+      if (response.status === 200) {
+        toast({
+          title: "Ingestion Successful",
+          description: `Data successfully transferred from ${sourceType} to ${targetType}`,
+        });
+      } else {
+        throw new Error(response.data.message || "Ingestion failed");
       }
-
-      console.log("Ingesting data with payload:", payload)
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      toast({
-        title: "Ingestion Successful",
-        description: `Data successfully transferred from ${sourceType} to ${targetType}`,
-      })
     } catch (error) {
       toast({
         title: "Ingestion Failed",
         description: error.message || "Failed to ingest data",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setClickHouseConfig((prevConfig) => ({
+      ...prevConfig,
+      [name]: value,
+    }));
+  };
 
   return (
     <div className="space-y-8">
@@ -275,6 +298,7 @@ export default function DataTransferForm() {
                   onConnect={handleClickHouseConnect}
                   onPreview={handleClickHousePreview}
                   isConnected={isConnected}
+                  onInputChange={handleInputChange} // Added this prop
                 />
               )}
 
@@ -298,6 +322,7 @@ export default function DataTransferForm() {
                   onConnect={handleClickHouseConnect}
                   onPreview={handleClickHousePreview}
                   isConnected={isConnected}
+                  onInputChange={handleInputChange} // Added this prop
                 />
               )}
 

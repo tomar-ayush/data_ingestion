@@ -59,8 +59,8 @@ export default function PreviewModal({ data, onClose, onSelectColumns }) {
           </label>
         </div>
 
-        <ScrollArea className="h-[400px] rounded-md border">
-          <div className="overflow-x-auto">
+        <ScrollArea className="h-[400px] rounded-md border overflow-x-auto">
+          <div >
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-muted">
