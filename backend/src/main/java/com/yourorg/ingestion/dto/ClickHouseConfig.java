@@ -13,6 +13,10 @@ public class ClickHouseConfig {
     private String table;
     private List<String> columns;
 
+    public ClickHouseConfig() {
+        // Default constructor for Jackson deserialization
+    }
+
     public ClickHouseConfig(String host, int port, String database, String user, String jwtToken, String table, List<String> columns) {
         this.host = host;
         this.port = port;

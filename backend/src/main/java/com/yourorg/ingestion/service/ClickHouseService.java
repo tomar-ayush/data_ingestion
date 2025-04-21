@@ -21,8 +21,8 @@ public class ClickHouseService {
             String url = String.format("jdbc:clickhouse://%s:%d/%s?ssl=true", config.getHost(), config.getPort(), config.getDatabase());
             logger.info("Connecting to ClickHouse with URL: {}", url);
             Properties props = new Properties();
-            props.setProperty("user", config.getUser());
-            props.setProperty("password", config.getJwtToken());
+            props.put("user", config.getUser());
+            props.put("password", config.getJwtToken());
 
             // Fetch column names dynamically if not provided
             if (config.getColumns() == null || config.getColumns().isEmpty()) {
@@ -78,9 +78,9 @@ public class ClickHouseService {
     public int insertData(List<Map<String, Object>> rows, ClickHouseConfig config) throws SQLException {
         if (rows.isEmpty()) return 0;
         // jdbc:clickhouse://u4g38ntpwh.ap-south-1.aws.clickhouse.cloud:8443?user=default&password=ESJH1Hb~_gr5y&ssl=true
-        String url = String.format("jdbc:clickhouse://%s:%d/%s", config.getHost(), config.getPort(), config.getDatabase());
+        String url = String.format("jdbc:clickhouse://%s:%d/%s?ssl=true", config.getHost(), config.getPort(), config.getDatabase());
         System.out.println(url);
-        url = "jdbc:clickhouse://u4g38ntpwh.ap-south-1.aws.clickhouse.cloud:8443?user=default&password=ESJH1Hb~_gr5y&ssl=true";
+        // url = "jdbc:clickhouse://u4g38ntpwh.ap-south-1.aws.clickhouse.cloud:8443?user=default&password=ESJH1Hb~_gr5y&ssl=true";
         Properties props = new Properties();
         props.setProperty("user", config.getUser());
         props.setProperty("password", config.getJwtToken());

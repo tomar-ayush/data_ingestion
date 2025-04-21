@@ -77,6 +77,7 @@ public class IngestionController {
     @GetMapping("/preview/clickhouse")
     @ResponseBody
     public Map<String, Object> previewClickHouse(@RequestParam String host, @RequestParam int port, @RequestParam String database, @RequestParam String user, @RequestParam String jwtToken, @RequestParam String table) {
+        System.out.println("the preview clickhouse api is called");
         Map<String, Object> response = new HashMap<>();
         try {
             logger.info("Received ClickHouse preview request: host={}, port={}, database={}, table={}", host, port, database, table);

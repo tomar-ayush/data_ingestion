@@ -10,6 +10,8 @@ public class FlatFileConfig {
     private String delimiter;
     private List<String> columns;
 
+    public FlatFileConfig() {}
+
     public FlatFileConfig(String filePath, String delimiter, List<String> columns) {
         this.filePath = filePath;
         this.delimiter = delimiter;
